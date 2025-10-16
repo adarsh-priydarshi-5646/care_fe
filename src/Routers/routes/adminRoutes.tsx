@@ -6,6 +6,8 @@ import { ValueSetEditor } from "@/components/ValueSet/ValueSetEditor";
 import { ValueSetList } from "@/components/ValueSet/ValueSetList";
 
 import { AppRoutes } from "@/Routers/AppRouter";
+import AnalyticsConfigForm from "@/pages/Admin/AnalyticsConfig/AnalyticsConfigForm";
+import AnalyticsConfigList from "@/pages/Admin/AnalyticsConfig/AnalyticsConfigList";
 import { PermissionsIndex } from "@/pages/Admin/Permissions/PermissionsIndex";
 import RolesIndex from "@/pages/Admin/Roles/RolesIndex";
 import TagConfigList from "@/pages/Admin/TagConfig/TagConfigList";
@@ -47,6 +49,11 @@ const AdminRoutes: AppRoutes = {
     );
     return acc;
   }, {}),
+  "/admin/analytics_config": () => <AnalyticsConfigList />,
+  "/admin/analytics_config/create": () => <AnalyticsConfigForm />,
+  "/admin/analytics_config/:id/edit": ({ id }) => (
+    <AnalyticsConfigForm id={id} />
+  ),
 };
 
 export default AdminRoutes;

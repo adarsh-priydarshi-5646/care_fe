@@ -3,6 +3,8 @@ import { Redirect } from "raviger";
 import FacilityUsers from "@/components/Facility/FacilityUsers";
 import ResourceCreate from "@/components/Resource/ResourceForm";
 
+import AnalyticsList from "@/pages/Facility/Analytics/AnalyticsList";
+import AnalyticsViewer from "@/pages/Facility/Analytics/AnalyticsViewer";
 import BedAvailabilityDashboard from "@/pages/Facility/BedAvailabilityDashboard";
 
 import { AppRoutes } from "@/Routers/AppRouter";
@@ -38,6 +40,18 @@ const FacilityRoutes: AppRoutes = {
   ),
   "/facility/:facilityId/resource/new": ({ facilityId }) => (
     <ResourceCreate facilityId={facilityId} />
+  ),
+  "/facility/:facilityId/analytics": ({ facilityId }) => (
+    <AnalyticsList facilityId={facilityId} />
+  ),
+  "/facility/:facilityId/analytics/:analyticsConfigId": ({
+    facilityId,
+    analyticsConfigId,
+  }) => (
+    <AnalyticsViewer
+      facilityId={facilityId}
+      analyticsConfigId={analyticsConfigId}
+    />
   ),
   "/facility/:facilityId/settings*": ({ facilityId }) => (
     <SettingsLayout facilityId={facilityId} />
