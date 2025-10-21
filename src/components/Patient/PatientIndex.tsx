@@ -33,6 +33,7 @@ import { GENDER_TYPES } from "@/common/constants";
 import CareIcon from "@/CAREUI/icons/CareIcon";
 import { PLUGIN_Component } from "@/PluginEngine";
 import { ShortcutBadge } from "@/Utils/keyboardShortcutComponents";
+import { getPatientSearchOptions } from "@/Utils/patientUtils";
 import query from "@/Utils/request/query";
 import { usePermissions } from "@/context/PermissionContext";
 import { useShortcuts, useShortcutSubContext } from "@/context/ShortcutContext";
@@ -44,10 +45,8 @@ import {
   PatientRead,
 } from "@/types/emr/patient/patient";
 import patientApi from "@/types/emr/patient/patientApi";
-import { FacilityRead } from "@/types/facility/facility";
 import { PatientIdentifierConfig } from "@/types/patient/patientIdentifierConfig/patientIdentifierConfig";
 import careConfig from "@careConfig";
-import { TFunction } from "i18next";
 
 export default function PatientIndex({ facilityId }: { facilityId: string }) {
   useShortcutSubContext("patient:search:-global");
@@ -193,7 +192,7 @@ export default function PatientIndex({ facilityId }: { facilityId: string }) {
           <div>
             <div className="space-y-6">
               <SearchInput
-                options={getSearchOptions(t, identifierSearch, facility)}
+                options={getPatientSearchOptions(t, identifierSearch, facility)}
                 onSearch={handleSearch}
                 className="w-full"
                 autoFocus
@@ -314,46 +313,6 @@ export default function PatientIndex({ facilityId }: { facilityId: string }) {
     </div>
   );
 }
-
-const getSearchOptions = (
-  t: TFunction,
-  searchIdentifier: { config?: string; value?: string },
-  facility?: FacilityRead,
-) => {
-  if (!facility) {
-    return [];
-  }
-
-  const { patient_instance_identifier_configs: configs } = facility;
-
-  // Phone number configs first, followed by auto-maintained configs, and then non-auto-maintained configs
-  return [
-    // Phone number configs
-    ...configs.filter(
-      ({ config }) =>
-        config.auto_maintained &&
-        config.system === careConfig.phoneNumberConfigSystem,
-    ),
-    // Auto-maintained configs but not phone number configs
-    ...configs.filter(
-      ({ config }) =>
-        config.auto_maintained &&
-        config.system !== careConfig.phoneNumberConfigSystem,
-    ),
-    // Non-auto-maintained configs
-    ...configs.filter((c) => !c.config.auto_maintained),
-  ].map((c) => ({
-    key: c.id,
-    type:
-      c.config.system === careConfig.phoneNumberConfigSystem
-        ? ("phone" as const)
-        : ("text" as const),
-    placeholder: t("search_by_identifier", { name: c.config.display }),
-    value:
-      searchIdentifier.config === c.id ? (searchIdentifier.value ?? "") : "",
-    display: c.config.display,
-  }));
-};
 
 const getPhoneNumberConfig = (identifierConfigs: PatientIdentifierConfig[]) => {
   return identifierConfigs.find(

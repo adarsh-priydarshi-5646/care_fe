@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { Check, ChevronsUpDown, Search, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { isValidPhoneNumber } from "react-phone-number-input";
@@ -31,6 +31,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import useBreakpoints from "@/hooks/useBreakpoints";
 
 import useCurrentFacility from "@/pages/Facility/utils/useCurrentFacility";
@@ -40,6 +47,7 @@ import {
   PatientRead,
 } from "@/types/emr/patient/patient";
 import patientApi from "@/types/emr/patient/patientApi";
+import { getOrderedPatientIdentifierConfigs } from "@/Utils/patientUtils";
 import query from "@/Utils/request/query";
 import careConfig from "@careConfig";
 
@@ -181,6 +189,25 @@ export default function PatientIdentifierFilter({
     verifyPatient();
   };
 
+  const highlightText = (text: string, searchTerm: string) => {
+    if (!searchTerm) {
+      return text;
+    }
+
+    const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const parts = text.split(new RegExp(`(${escapedSearchTerm})`, "gi"));
+
+    return parts.map((part, index) =>
+      part.toLowerCase() === searchTerm.toLowerCase() ? (
+        <span key={index} className="text-gray-950 font-semibold">
+          {part}
+        </span>
+      ) : (
+        part
+      ),
+    );
+  };
+
   const triggerButton = (
     <Button
       variant="outline"
@@ -199,7 +226,30 @@ export default function PatientIdentifierFilter({
 
   const selectorContent = (
     <Command shouldFilter={false}>
-      <div className="relative flex items-center px-3 py-2">
+      <div className="px-2 pt-2 pb-1">
+        <div className="mb-2 text-xs font-medium text-gray-700">
+          {t("search_by")}
+        </div>
+        <Select
+          value={searchType}
+          onValueChange={(value) => {
+            setSearchType(value);
+            setSearchTerm("");
+          }}
+        >
+          <SelectTrigger className="w-full" data-cy="identifier-type-selector">
+            <SelectValue placeholder={t("select_search_type")} />
+          </SelectTrigger>
+          <SelectContent>
+            {getOrderedPatientIdentifierConfigs(facility).map((config) => (
+              <SelectItem key={config.id} value={config.id}>
+                {config.config.display}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="relative flex px-2 items-center">
         {isPhoneNumberConfig ? (
           <PhoneInput
             placeholder={
@@ -213,80 +263,49 @@ export default function PatientIdentifierFilter({
             }
             value={searchTerm}
             onChange={(value) => setSearchTerm(value || "")}
-            className="border-none focus:ring-0 focus:outline-none flex-1"
+            className={cn(
+              "flex-1 focus-visible:ring-1 focus-within:ring-0 h-10",
+              searchTerm && "rounded-r-none -mr-2",
+            )}
           />
         ) : (
-          <Input
-            type="text"
-            placeholder={
-              searchType
-                ? t("search_by_identifier", {
-                    name: facility?.patient_instance_identifier_configs?.find(
-                      (c) => c.id === searchType,
-                    )?.config.display,
-                  })
-                : t("select_search_type")
-            }
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="border-none focus:ring-0 focus:outline-none focus-visible:ring-0 shadow-none flex-1"
-          />
+          <div className="relative flex flex-1 items-center">
+            <Search className="absolute left-3 size-4 text-gray-500" />
+            <Input
+              type="text"
+              placeholder={
+                searchType
+                  ? t("search_by_identifier", {
+                      name: facility?.patient_instance_identifier_configs?.find(
+                        (c) => c.id === searchType,
+                      )?.config.display,
+                    })
+                  : t("select_search_type")
+              }
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={cn(
+                "focus-visible:ring-0 focus:border-gray-300 h-10 pl-10 ",
+                searchTerm && "rounded-r-none border-r-0",
+              )}
+            />
+          </div>
         )}
         {searchTerm && (
           <Button
-            variant="ghost"
-            size="sm"
-            className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+            variant="outline"
+            size="icon"
+            className="rounded-l-none shadow-none text-gray-400 h-10 border-gray-300"
             onClick={() => setSearchTerm("")}
-            aria-label="Clear search input"
           >
-            <X className="h-4 w-4" />
+            <X />
+            <span className="sr-only">{t("clear_search")}</span>
           </Button>
         )}
       </div>
 
-      <div className="flex flex-wrap gap-1.5 p-2 border-t rounded-b-lg bg-gray-50 border-t-gray-100">
-        {[
-          // Phone number configs first
-          ...(facility?.patient_instance_identifier_configs?.filter(
-            (c) =>
-              c.config.auto_maintained &&
-              c.config.system === careConfig.phoneNumberConfigSystem,
-          ) || []),
-          // Auto-maintained configs but not phone number configs
-          ...(facility?.patient_instance_identifier_configs?.filter(
-            (c) =>
-              c.config.auto_maintained &&
-              c.config.system !== careConfig.phoneNumberConfigSystem,
-          ) || []),
-          // Non-auto-maintained configs
-          ...(facility?.patient_instance_identifier_configs?.filter(
-            (c) => !c.config.auto_maintained,
-          ) || []),
-        ].map((config) => (
-          <Button
-            key={config.id}
-            variant="outline"
-            onClick={() => {
-              setSearchType(config.id);
-              setSearchTerm("");
-            }}
-            className={cn(
-              "h-6 px-2 text-xs rounded-md",
-              searchType === config.id
-                ? "bg-primary-100 text-primary-700 hover:bg-primary-200 border-primary-400"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200",
-            )}
-          >
-            {config.config.display}
-          </Button>
-        ))}
-      </div>
-
       <CommandList>
-        {!searchType ? (
-          <CommandEmpty>{t("select_search_type")}</CommandEmpty>
-        ) : !searchTerm ? (
+        {!searchTerm ? (
           <CommandEmpty>{t("start_typing_to_search")}</CommandEmpty>
         ) : isPatientFetching ? (
           <CommandEmpty>{t("searching")}</CommandEmpty>
@@ -299,18 +318,28 @@ export default function PatientIdentifierFilter({
             {patientList.results.map((patient) => (
               <CommandItem
                 key={patient.id}
-                value={patient.name}
+                value={patient.id}
                 onSelect={() => handlePatientSelect(patient)}
+                className="py-2"
               >
                 <Check
                   className={cn(
-                    "mr-2 h-4 w-4",
+                    "mr-2 size-4",
                     selectedPatient?.id === patient.id
                       ? "opacity-100"
                       : "opacity-0",
                   )}
                 />
-                {patient.name}
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center w-full">
+                  <div className="text-gray-600 font-medium">
+                    {highlightText(patient.name, searchTerm)}
+                  </div>
+                  <div className="text-xs flex items-center gap-2">
+                    <span className="text-gray-500">
+                      {patient.phone_number}
+                    </span>
+                  </div>
+                </div>
               </CommandItem>
             ))}
           </CommandGroup>
